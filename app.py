@@ -4,61 +4,64 @@ import PIL.Image
 import numpy as np
 import cv2
 
-# إعدادات الصفحة
+# Page Configuration
 st.set_page_config(page_title="Optical Surface Inspector", layout="wide")
 
-# تحميل النموذج (تأكد من وجود الملف في نفس المسار)
+# Load the Model (ensure 'best.onnx' is in the same directory or update the path)
 @st.cache_resource
 def load_model():
     return YOLO("best.onnx", task="detect")
 
 model = load_model()
 
-st.title("🔍 نظام فحص وتدقيق الأسطح البصرية")
-st.write("ارفع صورة العدسة أو الشريحة الزجاجية لتحليل التضاريس واكتشاف العيوب آلياً.")
+# Header Section
+st.title("🔍 Automated Optical Surface Inspector")
+st.write("Upload an image of the lens or glass slide to analyze its topography and automatically detect defects.")
 
-# واجهة رفع الملفات
-uploaded_file = st.sidebar.file_uploader("اختر صورة للتحليل...", type=['jpg', 'jpeg', 'png'])
+# Sidebar for Image Upload
+uploaded_file = st.sidebar.file_uploader("Choose an image to analyze...", type=['jpg', 'jpeg', 'png'])
 
 if uploaded_file is not None:
-    # قراءة الصورة
+    # Read the uploaded image
     image = PIL.Image.open(uploaded_file)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("الصورة الأصلية")
+        st.subheader("Original Image")
         st.image(image, use_column_width=True)
         
     with col2:
-        st.subheader("نتائج التحليل الذكي")
-        # إجراء التنبؤ
+        st.subheader("Smart Analysis Results")
+        # Run inference
         results = model.predict(image, conf=0.25)
         res_plotted = results[0].plot()
         
-        # عرض الصورة وعليها النتائج
-        st.image(res_plotted, caption='العيوب المكتشفة', use_column_width=True)
+        # Display the image with bounding boxes
+        st.image(res_plotted, caption='Detected Defects', use_column_width=True)
 
-    # قسم التحليلات (Analytics)
+    # Analytics Section
     st.divider()
-    st.header("📊 التقرير الفني")
+    st.header("📊 Technical Report")
     
+    # Calculate metrics
     defect_count = len(results[0].boxes)
     avg_conf = np.mean(results[0].boxes.conf.cpu().numpy()) if defect_count > 0 else 0
     
     metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
     
     with metrics_col1:
-        status = "❌ معيب (Defective)" if defect_count > 0 else "✅ سليم (Regular)"
-        st.metric("حالة السطح", status)
+        status = "❌ Defective" if defect_count > 0 else "✅ Regular (Perfect)"
+        st.metric("Surface Status", status)
         
     with metrics_col2:
-        st.metric("عدد العيوب المرصودة", defect_count)
+        st.metric("Detected Defects Count", defect_count)
         
     with metrics_col3:
-        st.metric("متوسط ثقة النموذج", f"{avg_conf:.2%}")
+        st.metric("Average Model Confidence", f"{avg_conf:.2%}")
 
+    # Final Recommendation
     if defect_count > 0:
-        st.warning("⚠️ تم رصد عيوب في تضاريس السطح. يوصى بمراجعة القطعة قبل الاستخدام.")
+        st.warning("⚠️ Defects detected on the surface topography. It is recommended to review the item before use.")
     else:
-        st.success("✨ السطح مطابق للمواصفات الفنية والانتظام البصري.")
+        st.success("✨ The surface meets technical specifications and optical regularity.")
