@@ -2,66 +2,91 @@ import streamlit as st
 from ultralytics import YOLO
 import PIL.Image
 import numpy as np
-import cv2
 
-# Page Configuration
-st.set_page_config(page_title="Optical Surface Inspector", layout="wide")
+# --- Page Configuration ---
+st.set_page_config(
+    page_title="Optical Surface Inspector", 
+    page_icon="🔍", 
+    layout="wide"
+)
 
-# Load the Model (ensure 'best.onnx' is in the same directory or update the path)
+# --- Model Loading ---
+# Using st.cache_resource ensures the 11.7 MB ONNX model loads only once
 @st.cache_resource
 def load_model():
+    # Load the optimized ONNX model
     return YOLO("best.onnx", task="detect")
 
 model = load_model()
 
-# Header Section
+# --- Main UI ---
 st.title("🔍 Automated Optical Surface Inspector")
-st.write("Upload an image of the lens or glass slide to analyze its topography and automatically detect defects.")
+st.markdown("Upload a high-resolution image of a glass slide or lens. The AI will analyze the surface topography and map out irregularities.")
 
-# Sidebar for Image Upload
-uploaded_file = st.sidebar.file_uploader("Choose an image to analyze...", type=['jpg', 'jpeg', 'png'])
+# --- Sidebar Controls ---
+with st.sidebar:
+    st.header("⚙️ Inspection Settings")
+    # Dynamic confidence threshold (defaults to the 0.25 used in training testing)
+    conf_threshold = st.slider(
+        "Confidence Threshold", 
+        min_value=0.05, 
+        max_value=0.95, 
+        value=0.25, 
+        step=0.05,
+        help="Lower values detect more potential defects. Higher values are stricter."
+    )
+    st.divider()
+    st.markdown("**Supported Formats:** JPG, JPEG, PNG")
+
+# --- File Uploader ---
+uploaded_file = st.file_uploader("Drop your optical surface image here...", type=['jpg', 'jpeg', 'png'])
 
 if uploaded_file is not None:
-    # Read the uploaded image
+    # Read the image
     image = PIL.Image.open(uploaded_file)
     
+    # Create two columns for Before/After comparison
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Original Image")
-        st.image(image, use_column_width=True)
+        st.subheader("Original Surface")
+        st.image(image, use_container_width=True)
         
     with col2:
-        st.subheader("Smart Analysis Results")
-        # Run inference
-        results = model.predict(image, conf=0.25)
-        res_plotted = results[0].plot()
-        
-        # Display the image with bounding boxes
-        st.image(res_plotted, caption='Detected Defects', use_column_width=True)
+        st.subheader("AI Defect Map")
+        with st.spinner("Analyzing surface topography..."):
+            # Run inference using the user-defined confidence threshold
+            results = model.predict(image, conf=conf_threshold)
+            
+            # Extract the plotted image (BGR to RGB conversion handled by Streamlit/PIL)
+            res_plotted = results[0].plot()
+            st.image(res_plotted, use_container_width=True)
 
-    # Analytics Section
+    # --- Analytics Dashboard ---
     st.divider()
-    st.header("📊 Technical Report")
+    st.header("📊 Inspection Report")
     
-    # Calculate metrics
+    # Extract data from the YOLO results object
     defect_count = len(results[0].boxes)
-    avg_conf = np.mean(results[0].boxes.conf.cpu().numpy()) if defect_count > 0 else 0
     
-    metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
-    
-    with metrics_col1:
-        status = "❌ Defective" if defect_count > 0 else "✅ Regular (Perfect)"
-        st.metric("Surface Status", status)
-        
-    with metrics_col2:
-        st.metric("Detected Defects Count", defect_count)
-        
-    with metrics_col3:
-        st.metric("Average Model Confidence", f"{avg_conf:.2%}")
-
-    # Final Recommendation
+    # Calculate average confidence if defects exist
     if defect_count > 0:
-        st.warning("⚠️ Defects detected on the surface topography. It is recommended to review the item before use.")
+        avg_conf = np.mean(results[0].boxes.conf.cpu().numpy())
+        status = "❌ Irregular (Defects Found)"
+        status_color = "error"
     else:
-        st.success("✨ The surface meets technical specifications and optical regularity.")
+        avg_conf = 0.0
+        status = "✅ Regular (Clean Surface)"
+        status_color = "success"
+    
+    # Display metrics
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Surface Status", status)
+    m2.metric("Total Defects Detected", defect_count)
+    m3.metric("AI Confidence Level", f"{avg_conf:.1%}")
+
+    # Display dynamic alerts
+    if defect_count > 0:
+        st.error(f"Attention: {defect_count} anomalies were detected on this surface. Quality control review is required.")
+    else:
+        st.success("Pass: The optical surface aligns with regularity standards. No defects mapped.")
