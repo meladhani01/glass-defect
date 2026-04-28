@@ -9,7 +9,7 @@ st.set_page_config(page_title="Optical Surface Inspector", layout="wide")
 # Load the Model from the 'models' directory
 @st.cache_resource
 def load_model():
-    return YOLO("models/best.onnx", task="detect")
+    return YOLO("best.onnx", task="detect")
 
 model = load_model()
 
