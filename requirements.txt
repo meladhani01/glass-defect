@@ -1,6 +1,6 @@
-opencv-python-headless
 ultralytics
 streamlit
 pillow
 numpy
 onnxruntime
+opencv-python-headless
