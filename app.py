@@ -1,3 +1,9 @@
+import os
+import subprocess
+
+# 🚀 THE MAGIC FIX: Force uninstall the GUI version of OpenCV that crashes Streamlit
+subprocess.call(['pip', 'uninstall', '-y', 'opencv-python'])
+
 import streamlit as st
 from ultralytics import YOLO
 import PIL.Image
@@ -9,7 +15,6 @@ st.set_page_config(page_title="Optical Surface Inspector", layout="wide")
 # Load the Model from the 'models' directory
 @st.cache_resource
 def load_model():
-    # Updated path to match your GitHub structure
     return YOLO("models/best.onnx", task="detect")
 
 model = load_model()
