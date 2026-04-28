@@ -1,8 +1,15 @@
-import os
+import sys
 import subprocess
+import importlib.metadata
 
-# 🚀 THE MAGIC FIX: Force uninstall the GUI version of OpenCV that crashes Streamlit
-subprocess.call(['pip', 'uninstall', '-y', 'opencv-python'])
+# 🚀 THE ULTIMATE FIX: Clean the Streamlit Virtual Environment
+# نبحث عن نسخة OpenCV الثقيلة التي تسبب الانهيار داخل بيئة التطبيق
+try:
+    importlib.metadata.version('opencv-python')
+    # إذا وجدناها، نستخدم المسار الدقيق (sys.executable) لحذفها فوراً
+    subprocess.check_call([sys.executable, '-m', 'pip', 'uninstall', '-y', 'opencv-python'])
+except importlib.metadata.PackageNotFoundError:
+    pass # النسخة تم حذفها بنجاح، التطبيق جاهز للعمل!
 
 import streamlit as st
 from ultralytics import YOLO
