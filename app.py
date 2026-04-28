@@ -1,16 +1,3 @@
-import sys
-import subprocess
-import importlib.metadata
-
-# 🚀 THE ULTIMATE FIX: Clean the Streamlit Virtual Environment
-# نبحث عن نسخة OpenCV الثقيلة التي تسبب الانهيار داخل بيئة التطبيق
-try:
-    importlib.metadata.version('opencv-python')
-    # إذا وجدناها، نستخدم المسار الدقيق (sys.executable) لحذفها فوراً
-    subprocess.check_call([sys.executable, '-m', 'pip', 'uninstall', '-y', 'opencv-python'])
-except importlib.metadata.PackageNotFoundError:
-    pass # النسخة تم حذفها بنجاح، التطبيق جاهز للعمل!
-
 import streamlit as st
 from ultralytics import YOLO
 import PIL.Image
